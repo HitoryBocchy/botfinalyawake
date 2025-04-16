@@ -10,21 +10,31 @@ from database import load_data, save_user_stats, QUIZ_FILE, CHARACTER_FILE, EMOJ
 
 dp = Dispatcher()
 
+# Главное меню
 def main_menu():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🈯 Квиз 1 из 4 💮", callback_data="select_text_quiz_difficulty")],
-        [InlineKeyboardButton(text="🦹🏼‍♂️ Квиз угадай персонажа 🥷🏽", callback_data="start_character_quiz")],
-        [InlineKeyboardButton(text="🟠🐉 Угадай персонажа по Emoji 🌸🉐", callback_data="start_emoji_quiz")],
-        [InlineKeyboardButton(text="📊 Показать мою статистику 💾", callback_data="show_stats")]
-    ])
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🈯 Квиз 1 из 4 💮", callback_data="select_text_quiz_difficulty")],
+            [InlineKeyboardButton(text="🦹🏼‍♂️ Квиз угадай персонажа 🥷🏽", callback_data="start_character_quiz")],
+            [InlineKeyboardButton(text="🟠🐉 Угадай персонажа по Emoji 🌸🉐", callback_data="start_emoji_quiz")],
+            [InlineKeyboardButton(text="📊 Показать мою статистику 💾", callback_data="show_stats")]
+        ]
+    )
+    return markup
 
+
+# Меню выбора сложности
 def difficulty_menu(quiz_type):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🌱 Легкий", callback_data=f"difficulty|easy|{quiz_type}")],
-        [InlineKeyboardButton(text="🌿 Средний", callback_data=f"difficulty|medium|{quiz_type}")],
-        [InlineKeyboardButton(text="🔥 Сложный", callback_data=f"difficulty|hard|{quiz_type}")],
-        [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_main")]
-    ])
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🌱 Легкий", callback_data=f"difficulty|easy|{quiz_type}")],
+            [InlineKeyboardButton(text="🌿 Средний", callback_data=f"difficulty|medium|{quiz_type}")],
+            [InlineKeyboardButton(text="🔥 Сложный", callback_data=f"difficulty|hard|{quiz_type}")],
+            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_main")]
+        ]
+    )
+    return markup
+
 
 # Функция экранирования для Mark
 def escape_markdown_v2(text: str) -> str:
@@ -48,33 +58,42 @@ async def start_quiz(message: Message):
 # Выбор сложности текстового квиза
 @dp.callback_query(lambda c: c.data == "select_text_quiz_difficulty")
 async def select_text_quiz_difficulty(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.edit_text("Выберите уровень сложности:", reply_markup=difficulty_menu("text"))
 
 
 # Выбор сложности квиза по персонажам
 @dp.callback_query(lambda c: c.data == "start_character_quiz")
 async def start_character_quiz(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.edit_text("Выберите уровень сложности:", reply_markup=difficulty_menu("image"))
  
     
 # Выбор сложности квиза по Emoji
 @dp.callback_query(lambda c: c.data == "start_emoji_quiz")
 async def start_emoji_quiz(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.edit_text("Выберите уровень сложности:", reply_markup=difficulty_menu("emoji"))
 
 
 # Обработчик кнопки "Назад в меню"
 @dp.callback_query(lambda c: c.data == "back_to_main")
 async def back_to_main_menu(callback: CallbackQuery):
+    await callback.answer()
     try:
         await callback.message.edit_text("Вы вернулись в главное меню.", reply_markup=main_menu())
     except Exception:
         # Если сообщение не редактируемо (например, это фото), просто отправим новое сообщение
         await callback.message.answer("Вы вернулись в главное меню.", reply_markup=main_menu())
 
+
+
+
+
 # Обработчик выбора сложности
 @dp.callback_query(lambda c: c.data.startswith("difficulty|"))
 async def handle_difficulty_selection(callback: CallbackQuery):
+    await callback.answer()
     user_id = str(callback.from_user.id)
     difficulty, quiz_type = callback.data.split("|")[1:]
 
@@ -85,7 +104,7 @@ async def handle_difficulty_selection(callback: CallbackQuery):
     chat_id = callback.message.chat.id
     await bot.send_message(chat_id, f"🔹 Вы выбрали уровень: *{difficulty.capitalize()}*!\nГотовимся к первому вопросу...")
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.7)
 
     if quiz_type == "text":                                  
         await send_question(user_id, chat_id)
@@ -94,7 +113,7 @@ async def handle_difficulty_selection(callback: CallbackQuery):
     else:
         await send_emoji_question(user_id, chat_id)
 
-# === ОТПРАВКА ВОПРОСОВ ===
+
 
 # Функция отправки вопроса (текстовый квиз)
 async def send_question(user_id, chat_id):
@@ -122,6 +141,8 @@ async def send_question(user_id, chat_id):
 
     await bot.send_message(chat_id, f"❓ {question['question']}", reply_markup=keyboard)
 
+
+
 # Функция отправки вопроса (угадай персонажа)
 async def send_character_question(user_id, chat_id):
     character_data = load_data(CHARACTER_FILE)
@@ -148,7 +169,8 @@ async def send_character_question(user_id, chat_id):
 
     photo = FSInputFile(question["image_path"])  
     await bot.send_photo(chat_id, photo, caption="🖼 Кто этот персонаж?", reply_markup=keyboard)
-    
+
+
 # Функция отправки вопроса (emoji квиз)
 async def send_emoji_question(user_id, chat_id):
     emoji_quiz = load_data(EMOJI_FILE)
@@ -180,6 +202,7 @@ async def send_emoji_question(user_id, chat_id):
 # Обработчик ответов    
 @dp.callback_query(lambda c: c.data.startswith("answer|"))
 async def handle_answer(callback: CallbackQuery):
+    await callback.answer()
     user_id = str(callback.from_user.id)
     user_stats = load_data(STATS_FILE)
 
@@ -204,7 +227,7 @@ async def handle_answer(callback: CallbackQuery):
     # Отправляем ОТДЕЛЬНОЕ сообщение с результатом
     await callback.message.answer(response)
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.7)
     quiz_type = question.get("quiz_type", "text")  # fallback на "text
     if quiz_type == "image":
         await send_character_question(user_id, callback.message.chat.id)
